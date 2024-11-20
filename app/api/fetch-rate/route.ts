@@ -8,9 +8,8 @@ export async function GET() {
     // Ensure worker is running
     if (!workerService.isActive()) {
       // Add a small initial delay to prevent immediate rate limiting
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       await workerService.start();
-
     }
 
     const rate = await getLatestRate();
@@ -19,8 +18,8 @@ export async function GET() {
         success: true,
         data: {
           rate: null,
-          message: 'Initializing data collection...'
-        }
+          message: 'Initializing data collection...',
+        },
       });
     }
 
@@ -28,14 +27,17 @@ export async function GET() {
       success: true,
       data: {
         rate: rate.rate,
-        timestamp: rate.timestamp
-      }
+        timestamp: rate.timestamp,
+      },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching rate:', error);
-    return NextResponse.json({
-      success: false,
-      error: error.message
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      },
+      { status: 500 }
+    );
   }
-} 
+}
