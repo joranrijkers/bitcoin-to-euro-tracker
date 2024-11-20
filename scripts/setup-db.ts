@@ -1,11 +1,11 @@
-import { open } from 'sqlite';
-import sqlite3 from 'sqlite3';
-import { join } from 'path';
+const sqlite3 = require('sqlite3');
+const { open } = require('sqlite');
+const { join } = require('path');
 
 async function setupDatabase() {
   try {
     const db = await open({
-      filename: join(process.cwd(), 'btc-eur.db'),
+      filename: join(process.cwd(), 'data', 'btc-eur.db'),
       driver: sqlite3.Database,
     });
 

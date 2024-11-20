@@ -1,4 +1,4 @@
-# Base on Node.js LTS (Long Term Support)
+# Base on Node.js LTS
 FROM node:18-alpine AS base
 
 # Install dependencies only when needed
@@ -7,8 +7,6 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
-
-# Install dependencies (with legacy peer deps)
 RUN npm install --legacy-peer-deps
 
 # Rebuild the source code only when needed
@@ -23,7 +21,8 @@ RUN mkdir -p /app/data && \
     chown -R node:node /app/data
 
 # Setup the database
-RUN node -r ts-node/register scripts/setup-db.ts
+ENV NODE_ENV=production
+RUN node scripts/setup-db.ts
 
 # Build the application
 RUN npm run build
@@ -47,12 +46,11 @@ RUN chown -R nextjs:nodejs .
 
 USER nextjs
 
-# Expose the port the app runs on
+# Expose the port
 EXPOSE 3000
 
-# Environment variables must be redefined at runtime
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
+ENV NODE_ENV production
 
-# Start the application
 CMD ["node", "server.js"] 
