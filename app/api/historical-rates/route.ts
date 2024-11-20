@@ -1,18 +1,14 @@
-import { NextResponse } from 'next/server';
+import type { HistoricalRate } from '@/types/api';
 import { getHistoricalRates } from '@/db';
 
-export async function GET() {
+export async function GET(): Promise<Response> {
   try {
-    const rates = await getHistoricalRates();
-    return NextResponse.json({
-      success: true,
-      data: rates
-    });
-  } catch (error: any) {
-    console.error('Error fetching historical rates:', error);
-    return NextResponse.json({
-      success: false,
-      error: error.message
-    }, { status: 500 });
+    const rates: HistoricalRate[] = await getHistoricalRates();
+    return Response.json({ rates });
+  } catch (error) {
+    if (error instanceof Error) {
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+    return Response.json({ error: 'Unknown error occurred' }, { status: 500 });
   }
 } 

@@ -12,6 +12,7 @@ import {
   Legend
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import type { HistoricalRate } from '@/types/api';
 
 ChartJS.register(
   CategoryScale,
@@ -26,6 +27,29 @@ ChartJS.register(
 interface RateData {
   timestamp: string;
   rate: number;
+}
+
+interface ChartData {
+  labels: string[];
+  datasets: {
+    label: string;
+    data: number[];
+    borderColor: string;
+    backgroundColor: string;
+  }[];
+}
+
+interface ChartOptions {
+  responsive: boolean;
+  plugins: {
+    legend: {
+      position: 'top' | 'bottom' | 'left' | 'right' | 'center' | 'chartArea';
+    };
+    title: {
+      display: boolean;
+      text: string;
+    };
+  };
 }
 
 export default function HistoricalChart() {
