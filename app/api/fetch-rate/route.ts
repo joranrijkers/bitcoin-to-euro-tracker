@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getLatestRate } from '@/db';
 import { workerService } from '@/services/worker';
-import type { BitcoinRate } from '@/types/api';
 
 export async function GET() {
   try {
