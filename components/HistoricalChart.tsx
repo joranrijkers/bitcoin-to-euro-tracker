@@ -1,6 +1,7 @@
 'use client';
 
-import { useDataFetching } from '@/hooks/useDataFetching';
+import { useEffect, useState } from 'react';
+import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,8 +12,6 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
-import type { HistoricalRate } from '@/types/api';
 
 ChartJS.register(
   CategoryScale,
@@ -24,178 +23,133 @@ ChartJS.register(
   Legend
 );
 
-interface RateData {
+interface HistoricalRate {
   timestamp: string;
   rate: number;
 }
 
-interface ChartData {
-  labels: string[];
-  datasets: {
-    label: string;
-    data: number[];
-    borderColor: string;
-    backgroundColor: string;
-  }[];
-}
-
-interface ChartOptions {
-  responsive: boolean;
-  plugins: {
-    legend: {
-      position: 'top' | 'bottom' | 'left' | 'right' | 'center' | 'chartArea';
-    };
-    title: {
-      display: boolean;
-      text: string;
-    };
-  };
-}
-
 export default function HistoricalChart() {
-  const { data: historicalData, loading, error } = 
-    useDataFetching<RateData[]>('/api/historical-rates', 5000);
+  const [chartData, setChartData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const processedData = historicalData?.reduce<{ labels: string[]; rates: number[] }>(
-    (acc, current, index, array) => {
-      const prevRate = index > 0 ? array[index - 1].rate : null;
-      const rateChanged = current.rate !== prevRate;
+  useEffect(() => {
+    async function fetchHistoricalRates() {
+      try {
+        const response = await fetch('/api/historical-rates');
+        if (!response.ok) {
+          throw new Error('Failed to fetch historical rates');
+        }
+        const data = await response.json();
+        
+        if (!data.rates || !Array.isArray(data.rates)) {
+          throw new Error('Invalid data format received');
+        }
 
-      acc.labels.push(rateChanged ? 'changed' : '');
-      acc.rates.push(current.rate);
-      
-      return acc;
-    },
-    { labels: [], rates: [] }
-  ) || { labels: [], rates: [] };
+        const rates: HistoricalRate[] = data.rates;
+        
+        // Format timestamps to be more readable
+        const formatTime = (timestamp: string) => {
+          const date = new Date(timestamp);
+          return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        };
 
-  const chartData = {
-    labels: processedData.labels,
-    datasets: [
-      {
-        label: 'BTC/EUR Rate',
-        data: processedData.rates,
-        borderColor: 'rgb(96, 165, 250)',
-        backgroundColor: 'rgba(96, 165, 250, 0.5)',
-        tension: 0.1,
-        pointRadius: (ctx: any) => {
-          return processedData.labels[ctx.dataIndex] === 'changed' ? 2 : 0;
-        },
-        pointHoverRadius: 5
-      }
-    ]
-  };
+        const chartData = {
+          labels: rates.map(rate => formatTime(rate.timestamp)),
+          datasets: [
+            {
+              label: 'Bitcoin to Euro Rate',
+              data: rates.map(rate => rate.rate),
+              borderColor: 'rgb(75, 192, 192)',
+              backgroundColor: 'rgba(75, 192, 192, 0.5)',
+              tension: 0.3,
+              pointRadius: 1, // Smaller points for dense data
+              pointHoverRadius: 5,
+            },
+          ],
+        };
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: {
-      duration: 0
-    },
-    plugins: {
-      legend: {
-        position: 'top' as const,
-        labels: {
-          color: '#e5e7eb'
-        }
-      },
-      title: {
-        display: true,
-        text: 'BTC/EUR Rate History',
-        color: '#e5e7eb'
-      },
-      tooltip: {
-        callbacks: {
-          title: (tooltipItems: any[]) => {
-            const index = tooltipItems[0].dataIndex;
-            return new Date(historicalData![index].timestamp).toLocaleTimeString();
-          },
-          label: (context: any) => {
-            return `€${context.parsed.y.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })}`;
-          }
-        }
-      }
-    },
-    scales: {
-      x: {
-        display: false,
-        grid: {
-          display: false
-        }
-      },
-      y: {
-        beginAtZero: false,
-        grid: {
-          color: '#374151'
-        },
-        ticks: {
-          color: '#e5e7eb',
-          callback: (value: number) => {
-            return `€${value.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })}`;
-          }
-        }
+        setChartData(chartData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+        console.error('Error fetching historical rates:', err);
       }
     }
-  };
 
-  if (loading && !historicalData) {
+    // Initial fetch
+    fetchHistoricalRates();
+    
+    // Update every 5 seconds
+    const interval = setInterval(fetchHistoricalRates, 5000);
+    
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+  }, []);
+
+  if (error) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow-lg">
-        <h2 className="text-xl font-semibold mb-4">Historical Rate Chart</h2>
-        <div className="h-[400px] flex items-center justify-center">
-          <div className="text-gray-600 animate-pulse">Loading chart data...</div>
-        </div>
+      <div className="text-red-500 p-4 text-center">
+        Error: {error}
+      </div>
+    );
+  }
+
+  if (!chartData) {
+    return (
+      <div className="text-center p-4">
+        Loading chart data...
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gray-800 rounded-lg shadow-lg">
-      <h2 className="text-xl font-semibold mb-4 text-gray-100">Historical Rate Chart</h2>
-      {error && (
-        <div className="text-red-400 p-4 bg-red-900/50 rounded mb-4">
-          {error}
-        </div>
-      )}
-      <div className="h-[400px]">
-        <Line 
-          data={chartData} 
-          options={{
-            ...options,
-            scales: {
-              x: {
-                display: false,
-                grid: {
-                  display: false
-                }
-              },
-              y: {
-                type: 'linear',
-                beginAtZero: false,
-                grid: {
-                  color: '#374151'
-                },
-                ticks: {
-                  color: '#e5e7eb',
-                  callback: function(tickValue: number | string) {
-                    const value = Number(tickValue);
-                    return `€${value.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}`;
-                  }
-                }
+    <div className="w-full h-[400px] p-4">
+      <Line
+        data={chartData}
+        options={{
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 0 // Disable animations for real-time updates
+          },
+          plugins: {
+            legend: {
+              position: 'top' as const,
+            },
+            title: {
+              display: true,
+              text: 'Bitcoin to Euro Exchange Rate (Real-time)',
+              font: {
+                size: 16
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => `€${context.parsed.y.toLocaleString()}`
               }
             }
-          }} 
-        />
-      </div>
+          },
+          scales: {
+            y: {
+              beginAtZero: false,
+              ticks: {
+                callback: (value) => `€${value.toLocaleString()}`
+              }
+            },
+            x: {
+              ticks: {
+                maxRotation: 45,
+                minRotation: 45,
+                autoSkip: true,
+                maxTicksLimit: 20 // Limit the number of x-axis labels
+              }
+            }
+          }
+        }}
+      />
     </div>
   );
 }
