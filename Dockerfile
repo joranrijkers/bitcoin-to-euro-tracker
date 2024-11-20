@@ -20,9 +20,14 @@ COPY . .
 RUN mkdir -p /app/data && \
     chown -R node:node /app/data
 
-# Setup the database
-ENV NODE_ENV=production
-RUN node scripts/setup-db.ts
+# Install TypeScript globally
+RUN npm install -g typescript
+
+# Transpile the TypeScript setup script to JavaScript
+RUN npx tsc scripts/setup-db.ts --outDir dist
+
+# Run the transpiled database setup script
+RUN node dist/scripts/setup-db.js
 
 # Build the application
 RUN npm run build
@@ -53,4 +58,4 @@ ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 ENV NODE_ENV production
 
-CMD ["node", "server.js"] 
+CMD ["node", "server.js"]
