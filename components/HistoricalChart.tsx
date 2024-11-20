@@ -54,14 +54,17 @@ export default function HistoricalChart() {
         const rates: HistoricalRate[] = data.rates;
 
         const formatTime = (timestamp: string) => {
-          const date = new Date(timestamp);
-          return date.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          });
-        };
-
+            const date = new Date(timestamp);
+            // Format to local time
+            return date.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Ensures local timezone
+            });
+          };
+          
         const chartData: ChartDataProps = {
           labels: rates.map((rate) => formatTime(rate.timestamp)),
           datasets: [

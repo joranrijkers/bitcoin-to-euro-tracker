@@ -51,6 +51,16 @@ export async function GET(): Promise<Response> {
       driver: sqlite3.Database,
     });
 
+    // Create table if it doesn't exist
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS rates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        rate DECIMAL(10, 2) NOT NULL
+      )
+    `);
+
+    // Insert new rate
     await db.run(
       `
       INSERT INTO rates (timestamp, rate) 
